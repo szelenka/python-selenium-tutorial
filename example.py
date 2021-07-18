@@ -4,6 +4,7 @@ import datetime
 from pathlib import Path
 import tempfile
 import logging
+from logging.handlers import RotatingFileHandler
 import atexit
 import sys
 import time
@@ -25,17 +26,36 @@ class TheClub():
         credentials_filename: Path = Path("./.credentials.txt"), 
         path_to_chromedriver: Path = Path("./chromedriver")
     ):
-        logging.basicConfig(
-            stream=sys.stdout,
-            level=logging.INFO
-        )
+        # logging.basicConfig(
+        #     filename=Path(__file__).parent / 'logs/log.txt',
+        #     filemode='w',
+        #     level=logging.INFO
+        # )
+        self.init_logging()
         self.max_players = 4
         self.driver = self.initialize_browser(path_to_chromedriver=path_to_chromedriver)
         self.get_credentials(filename=credentials_filename)
 
+    def init_logging(self, log_level: str = 'INFO'):
+        logger = logging.getLogger('YourLogger')
+        logger.setLevel(log_level)
+
+        log_handler = logging.handlers.RotatingFileHandler(
+            filename=Path(__file__).parent / 'logs/log.txt', 
+            maxBytes=2048, 
+            backupCount=10
+        )
+        log_handler.setLevel(log_level)
+        logger.addHandler(log_handler)
+
+        console = logging.StreamHandler()
+        console.setLevel(log_level)
+        logger.addHandler(console) 
+        self.logger = logger 
+
     def log(self, msg: T.Any, level: str = 'info'):
         """Print out a log statement"""
-        getattr(logging, level.lower())(msg)
+        getattr(self.logger, level.lower())(msg)
 
     def get_credentials(self, filename: Path):
         """Load the user credentials into memory"""
@@ -66,6 +86,7 @@ class TheClub():
             executable_path=path_to_chromedriver,
             options=options
         )
+        driver.maximize_window()
         assert isinstance(driver, RemoteWebDriver)
 
         # remember to close the browser when the script exits
@@ -260,11 +281,10 @@ class TheClub():
         for idx in range(0, num_players):
             self.add_player_to_time(player_name=players[idx])
 
-        # TODO:
         # submit booking request
-        # resolved = self.click_on_xpath(
-        #     xpath='//a[contains(., "Book Now")]'
-        # )
+        resolved = self.click_on_xpath(
+            xpath='//a[contains(., "Book Now")]'
+        )
 
         # # verify it was successful
         # resolved = self.wait_on_visible(
@@ -364,11 +384,11 @@ def parse_args():
         help="Next day of week to search for times (default: Tuesday)"
     )
     parser.add_argument(
-        '--tee_times', type=str, required=False, default='08:10|08:30',
-        help='Pipe separated list of times to check (default: "08:10|08:30")'
+        '--tee_times', type=str, required=False, default='08:20',
+        help='Pipe separated list of times to check (default: "08:20")'
     )
     parser.add_argument(
-        '--players', type=str, required=True,
+        '--players', type=str, required=False, default="Amor, Joe|Crovitz, Mat|Wagner, Robert|Coley, David",
         help='Pipe separated list of players to add'
     )
     return parser.parse_args()
@@ -383,7 +403,7 @@ def main(args):
     obj = TheClub(
         credentials_filename=args.credentials_filename
     )
-    
+
     obj.log(f'Searching Date: {ts.strftime("%Y-%m-%d")}')
     obj.log(f'For Times: {tt}')
     obj.log(f'With Members: {mp}')
