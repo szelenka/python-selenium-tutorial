@@ -299,6 +299,7 @@ class TheClub():
             return
 
         # click add Member
+        # TODO: click on TBD instead of Member
         resolved = self.click_on_xpath(
             xpath=f'//a/i[contains(@class, "fa-plus")][1]'
         )
